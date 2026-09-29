@@ -60,4 +60,15 @@ def create_product(product: ProductCreate):
     # Add the product to our list
     products.append(new_product)
 
-    return new_product
+    return new_product        
+
+#Find product by product id
+@app.get("/products/{product_id}")
+def get_product(product_id: int):
+    for existing_product in products:
+        if existing_product["id"]==product_id:
+            return existing_product
+    raise HTTPException(
+        status_code=404,
+        detail="Product Not Found"
+    )
