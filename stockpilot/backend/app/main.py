@@ -72,3 +72,35 @@ def get_product(product_id: int):
         status_code=404,
         detail="Product Not Found"
     )
+
+@app.put("/products/{product_id}")
+def update_product(product_id: int, updated_product: ProductCreate):
+
+    # Find the product
+    for product in products:
+
+        if product["id"] == product_id:
+
+            # Check whether the new SKU belongs to another product
+            for existing_product in products:
+                if (
+                    existing_product["sku"] == updated_product.sku
+                    and existing_product["id"] != product_id
+                ):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Product SKU already exists"
+                    )
+
+            # Update the product
+            product["sku"] = updated_product.sku
+            product["name"] = updated_product.name
+            product["quantity"] = updated_product.quantity
+            product["reorder_level"] = updated_product.reorder_level
+
+            return product
+
+    raise HTTPException(
+        status_code=404,
+        detail="Product not found"
+    )
