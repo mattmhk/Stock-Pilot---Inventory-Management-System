@@ -104,3 +104,16 @@ def update_product(product_id: int, updated_product: ProductCreate):
         status_code=404,
         detail="Product not found"
     )
+    
+@app.delete("/products/{product_id}")
+def delete_product(product_id : int):
+    for product in products:
+        if product["id"]==product_id:
+            products.remove(product)
+
+        return "Product returned successfully"
+
+    raise HTTPException(
+        status_code=404,
+        detail="Product not found"
+    )
