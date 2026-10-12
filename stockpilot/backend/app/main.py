@@ -3,8 +3,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.database import engine, get_db
-from app.models import Base, Product
-from app.schemas import ProductCreate, ProductResponse
+from app.models import Base, Product, StockMovement
+from app.schemas import (
+    ProductCreate,
+    ProductResponse,
+    StockMovementCreate,
+    StockMovementResponse
+)
 
 
 # Create database tables if they don't exist yet
@@ -142,3 +147,98 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Product deleted successfully"}
+
+
+#Record stock coming in or going out and update the product quantity
+@app.post(
+    "/stock-movements",
+    status_code=201,
+    response_model=StockMovementResponse
+)
+def create_stock_movement(
+    movement: StockMovementCreate,
+    db: Session = Depends(get_db)
+):
+
+    product = db.get(Product, movement.product_id)
+
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    if movement.movement_type == "OUT":
+        if movement.quantity > product.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail="Insufficient stock"
+            )
+        product.quantity -= movement.quantity
+    else:
+        product.quantity += movement.quantity
+
+    new_movement = StockMovement(
+        product_id=movement.product_id,
+        movement_type=movement.movement_type,
+        quantity=movement.quantity,
+        note=movement.note
+    )
+
+    db.add(new_movement)
+    db.commit()
+    db.refresh(new_movement)
+
+    return new_movement
+
+
+@app.get(
+    "/stock-movements",
+    response_model=list[StockMovementResponse]
+)
+def get_stock_movements(db: Session = Depends(get_db)):
+    return db.scalars(
+        select(StockMovement).order_by(StockMovement.created_at.desc())
+    ).all()
+
+
+@app.get(
+    "/stock-movements/{movement_id}",
+    response_model=StockMovementResponse
+)
+def get_stock_movement(movement_id: int, db: Session = Depends(get_db)):
+
+    movement = db.get(StockMovement, movement_id)
+
+    if movement is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Stock movement not found"
+        )
+
+    return movement
+
+
+#Movement history for a single product
+@app.get(
+    "/products/{product_id}/stock-movements",
+    response_model=list[StockMovementResponse]
+)
+def get_product_stock_movements(
+    product_id: int,
+    db: Session = Depends(get_db)
+):
+
+    product = db.get(Product, product_id)
+
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    return db.scalars(
+        select(StockMovement)
+        .where(StockMovement.product_id == product_id)
+        .order_by(StockMovement.created_at.desc())
+    ).all()
