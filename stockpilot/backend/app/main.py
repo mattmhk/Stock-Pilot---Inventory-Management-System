@@ -6,6 +6,7 @@ from app.database import engine, get_db
 from app.models import Base, Product, StockMovement
 from app.schemas import (
     ProductCreate,
+    ProductUpdate,
     ProductResponse,
     StockMovementCreate,
     StockMovementResponse
@@ -71,6 +72,23 @@ def create_product(
     return new_product
 
 
+#Products at or below their reorder level
+#Must stay above /products/{product_id} so "low-stock" isn't parsed as an id
+@app.get(
+    "/products/low-stock",
+    response_model=list[ProductResponse]
+)
+def get_low_stock_products(
+    db: Session = Depends(get_db)
+):
+
+    return db.scalars(
+        select(Product).where(
+            Product.quantity <= Product.reorder_level
+        )
+    ).all()
+
+
 #Find product by product id
 @app.get(
     "/products/{product_id}",
@@ -95,7 +113,7 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 )
 def update_product(
     product_id: int,
-    updated_product: ProductCreate,
+    updated_product: ProductUpdate,
     db: Session = Depends(get_db)
 ):
 
@@ -123,7 +141,6 @@ def update_product(
 
     product.sku = updated_product.sku
     product.name = updated_product.name
-    product.quantity = updated_product.quantity
     product.reorder_level = updated_product.reorder_level
 
     db.commit()

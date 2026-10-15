@@ -11,6 +11,12 @@ class ProductCreate(BaseModel):
     quantity: int = Field(ge=0)
     reorder_level: int = Field(ge=0)
 
+# Quantity is left out on purpose: stock changes go through /stock-movements
+class ProductUpdate(BaseModel):
+    sku: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    reorder_level: int = Field(ge=0)
+
 class ProductResponse(BaseModel):
     id: int
     sku: str
