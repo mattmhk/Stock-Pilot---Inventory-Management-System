@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from app.database import engine, get_db
 from app.models import Base, Product, StockMovement
@@ -33,8 +33,48 @@ def health_check():
     "/products",
     response_model=list[ProductResponse]
 )
-def get_products(db: Session = Depends(get_db)):
-    return db.scalars(select(Product)).all()
+def get_products(
+    search: str | None = Query(None, min_length=1),
+    min_quantity: int | None = Query(None, ge=0),
+    max_quantity: int | None = Query(None, ge=0),
+    low_stock: bool | None = None,
+    db: Session = Depends(get_db)
+):
+
+    if (
+        min_quantity is not None
+        and max_quantity is not None
+        and min_quantity > max_quantity
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="min_quantity cannot be greater than max_quantity"
+        )
+
+    query = select(Product)
+
+    # Case-insensitive partial match on name or SKU
+    if search:
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                Product.name.ilike(pattern),
+                Product.sku.ilike(pattern)
+            )
+        )
+
+    if min_quantity is not None:
+        query = query.where(Product.quantity >= min_quantity)
+
+    if max_quantity is not None:
+        query = query.where(Product.quantity <= max_quantity)
+
+    if low_stock is True:
+        query = query.where(Product.quantity <= Product.reorder_level)
+    elif low_stock is False:
+        query = query.where(Product.quantity > Product.reorder_level)
+
+    return db.scalars(query.order_by(Product.id)).all()
 
 
 #creating a new product
