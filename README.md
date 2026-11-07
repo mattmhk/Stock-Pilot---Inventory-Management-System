@@ -4,6 +4,17 @@ A full-stack inventory management app: a **FastAPI** + **PostgreSQL** REST API w
 
 Stock levels can't be edited directly. Every change goes through a recorded stock movement, so the full history of each product is always available, and the API refuses any withdrawal that would take stock below zero.
 
+## Live demo
+
+- **App:** https://stock-pilot-inventory-management-sy-two.vercel.app
+- **API docs (Swagger):** https://stockpilot-api-xb6y.onrender.com/docs
+
+> The API runs on Render's free tier, which sleeps after about 15 minutes without traffic. The first load after that can take 30–60 seconds while it wakes up.
+
+```
+Browser ──> React app (Vercel) ──> FastAPI (Render) ──> PostgreSQL (Neon)
+```
+
 ## Features
 
 - **Product management**: create, read, update and delete products with unique SKUs
@@ -33,6 +44,7 @@ Stock levels can't be edited directly. Every change goes through a recorded stoc
 | Config | `.env` via python-dotenv |
 | Testing | pytest, FastAPI `TestClient` |
 | CI | GitHub Actions |
+| Hosting | Vercel (frontend), Render (API), Neon (PostgreSQL) |
 
 ## Project structure
 
@@ -256,10 +268,33 @@ alembic revision --autogenerate -m "describe the change"
 alembic upgrade head
 ```
 
+## Deployment
+
+Every push to `main` redeploys automatically:
+
+| Part | Platform | Configuration |
+|---|---|---|
+| Frontend | Vercel | Root directory `stockpilot/frontend`; [`vercel.json`](stockpilot/frontend/vercel.json) sends every route to `index.html` so links like `/products/4` work on refresh |
+| API | Render | [`render.yaml`](render.yaml) Blueprint; runs `alembic upgrade head` before starting Uvicorn, so new migrations apply on deploy |
+| Database | Neon | Serverless PostgreSQL; the API uses the pooled connection and migrations use the direct one |
+
+Environment variables (set in each platform's dashboard, never committed):
+
+| Where | Variable | Value |
+|---|---|---|
+| Render | `DATABASE_URL` | Neon pooled connection string |
+| Render | `DATABASE_URL_UNPOOLED` | Neon direct connection string |
+| Render | `CORS_ORIGINS` | The frontend URL(s), comma-separated |
+| Vercel | `VITE_API_URL` | The Render API URL |
+
+`VITE_API_URL` is baked in at build time, so changing it requires a redeploy on Vercel.
+
 ## Roadmap
 
 - [x] GitHub Actions CI to run the tests on every push
 - [x] Environment-based configuration and Alembic migrations
 - [x] PostgreSQL support
 - [x] React + TypeScript frontend
-- [ ] Deployment
+- [x] Deployment (Vercel + Render + Neon)
+- [ ] Authentication
+- [ ] Pagination for large product lists
