@@ -21,8 +21,11 @@ CORS_ORIGINS = os.getenv(
 
 app.add_middleware(
     CORSMiddleware,
+    # A trailing slash would never match the browser's Origin header, so drop it
     allow_origins=[
-        origin.strip() for origin in CORS_ORIGINS.split(",") if origin.strip()
+        origin.strip().rstrip("/")
+        for origin in CORS_ORIGINS.split(",")
+        if origin.strip()
     ],
     allow_methods=["*"],
     allow_headers=["*"]
