@@ -119,14 +119,16 @@ export function ProductDetailPage() {
 
         {movements.error ? (
           <ErrorMessage error={movements.error} onRetry={movements.reload} />
-        ) : !movements.data ? (
+        ) : !movements.data || (movements.loading && movements.data.length === 0) ? (
+          // Also covers reloading after the first movement, so the stale
+          // "No stock movements yet" message never flashes up
           <Loading />
         ) : movements.data.length === 0 ? (
           <EmptyState title="No stock movements yet">
             <p>Deliveries and orders you record will appear here.</p>
           </EmptyState>
         ) : (
-          <div className="table-wrap">
+          <div className={`table-wrap ${movements.loading ? 'is-refreshing' : ''}`}>
             <table className="table">
               <thead>
                 <tr>
