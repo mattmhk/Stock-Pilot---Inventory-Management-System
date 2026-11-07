@@ -1,6 +1,6 @@
 # StockPilot
 
-An inventory management REST API built with **FastAPI** and **SQLAlchemy**. It tracks products and stock levels, records every stock movement in and out, flags products that need reordering, and reports headline numbers for a dashboard.
+A full-stack inventory management app: a **FastAPI** + **PostgreSQL** REST API with a **React + TypeScript** frontend. It tracks products and stock levels, records every stock movement in and out, flags products that need reordering, and shows headline numbers on a dashboard.
 
 Stock levels can't be edited directly. Every change goes through a recorded stock movement, so the full history of each product is always available, and the API refuses any withdrawal that would take stock below zero.
 
@@ -16,13 +16,15 @@ Stock levels can't be edited directly. Every change goes through a recorded stoc
 - **Movement history**: a timestamped audit trail for every product; deleting a product also deletes its history
 - **Low-stock alerts**: products at or below their reorder level
 - **Dashboard summary**: total products, total units, low-stock count and out-of-stock count
-- **Automated tests**: 39 pytest tests covering success and failure cases, each run against a fresh in-memory database
+- **Web interface**: dashboard, searchable and filterable product list, product pages with movement history, and forms for adding, editing and deleting products and recording stock in/out
+- **Automated tests**: 41 pytest tests covering success and failure cases, each run against a fresh in-memory database; CI also lints and builds the frontend
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Language | Python 3.13 |
+| Frontend | React 19, TypeScript, Vite, React Router |
+| Backend language | Python 3.13 |
 | Web framework | FastAPI |
 | ORM | SQLAlchemy 2.x |
 | Validation | Pydantic v2 |
@@ -30,8 +32,22 @@ Stock levels can't be edited directly. Every change goes through a recorded stoc
 | Migrations | Alembic |
 | Config | `.env` via python-dotenv |
 | Testing | pytest, FastAPI `TestClient` |
+| CI | GitHub Actions |
 
 ## Project structure
+
+```
+stockpilot/
+├── backend/
+│   └── ...                  # see below
+└── frontend/
+    ├── src/
+    │   ├── lib/             # API client, types, data-fetching hooks
+    │   ├── components/      # Layout, forms, modal, badges, states
+    │   └── pages/           # Dashboard, Products, Product detail
+    ├── .env.example         # VITE_API_URL
+    └── package.json
+```
 
 ```
 stockpilot/backend/
@@ -62,8 +78,11 @@ stockpilot/backend/
 ### Prerequisites
 
 - Python 3.13 or newer
+- Node.js 22 or newer (for the frontend)
 
-### Installation
+### Backend
+
+#### Installation
 
 ```bash
 git clone https://github.com/mattmhk/Stock-Pilot---Inventory-Management-System.git
@@ -79,7 +98,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configure the database
+#### Configure the database
 
 Copy the example settings file:
 
@@ -96,13 +115,13 @@ cp .env.example .env
 # SQLite: no setup needed
 DATABASE_URL=sqlite:///./stockpilot.db
 
-# PostgreSQL: create an empty "stockpilot" database first
-DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/stockpilot
+# PostgreSQL (local or hosted, e.g. Neon): the database must already exist
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require
 ```
 
-If there is no `.env`, the app falls back to SQLite. `.env` is git-ignored, so never commit real credentials.
+`postgresql://` URLs automatically use the psycopg 3 driver. If `DATABASE_URL_UNPOOLED` is set (Neon provides it), Alembic uses that direct connection for migrations. If there is no `.env`, the app falls back to SQLite. `.env` is git-ignored, so never commit real credentials.
 
-### Create the tables
+#### Create the tables
 
 The schema is managed by Alembic migrations:
 
@@ -112,7 +131,7 @@ alembic upgrade head
 
 Run this again whenever you pull new migrations.
 
-### Run the API
+#### Run the API
 
 ```bash
 uvicorn app.main:app --reload
@@ -122,6 +141,20 @@ Then open:
 
 - Interactive API docs (Swagger UI): http://127.0.0.1:8000/docs
 - Alternative docs (ReDoc): http://127.0.0.1:8000/redoc
+
+### Frontend
+
+In a second terminal, with the API running:
+
+```bash
+cd stockpilot/frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173.
+
+The frontend calls the API at `http://127.0.0.1:8000` by default. To point it somewhere else, copy `.env.example` to `.env` and set `VITE_API_URL`. The backend only accepts browser requests from the origins listed in its `CORS_ORIGINS` setting (default: `http://localhost:5173` and `http://127.0.0.1:5173`), so add your frontend's URL there when you deploy.
 
 ## API endpoints
 
@@ -198,10 +231,17 @@ The product's quantity is now `15`, and the movement appears in `GET /products/1
 
 ## Running the tests
 
-From `stockpilot/backend` with the virtual environment active:
+Backend, from `stockpilot/backend` with the virtual environment active:
 
 ```bash
 pytest -v
+```
+
+Frontend type-check, lint and production build, from `stockpilot/frontend`:
+
+```bash
+npm run lint
+npm run build
 ```
 
 The tests replace the `get_db` dependency with an in-memory SQLite database that is reset before every test, so they never touch your development database and don't depend on each other. PostgreSQL doesn't need to be running for the tests.
@@ -221,5 +261,5 @@ alembic upgrade head
 - [x] GitHub Actions CI to run the tests on every push
 - [x] Environment-based configuration and Alembic migrations
 - [x] PostgreSQL support
-- [ ] React + TypeScript frontend
+- [x] React + TypeScript frontend
 - [ ] Deployment
