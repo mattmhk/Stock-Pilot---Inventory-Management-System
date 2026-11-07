@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -30,7 +30,9 @@ class StockMovement(Base):
     movement_type: Mapped[str] = mapped_column(String)
     quantity: Mapped[int]
     note: Mapped[str | None] = mapped_column(String, nullable=True)
+    # timezone=True -> TIMESTAMP WITH TIME ZONE in PostgreSQL, so UTC is preserved
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
     )
 

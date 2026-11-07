@@ -26,7 +26,9 @@ Stock levels can't be edited directly. Every change goes through a recorded stoc
 | Web framework | FastAPI |
 | ORM | SQLAlchemy 2.x |
 | Validation | Pydantic v2 |
-| Database | SQLite |
+| Database | PostgreSQL (psycopg 3) or SQLite |
+| Migrations | Alembic |
+| Config | `.env` via python-dotenv |
 | Testing | pytest, FastAPI `TestClient` |
 
 ## Project structure
@@ -47,6 +49,11 @@ stockpilot/backend/
 │   ├── test_products.py
 │   ├── test_stock_movements.py
 │   └── test_dashboard.py
+├── alembic/
+│   ├── env.py               # Reads DATABASE_URL and the models' metadata
+│   └── versions/            # Migration scripts
+├── alembic.ini
+├── .env.example             # Template for your local .env
 └── requirements.txt
 ```
 
@@ -72,6 +79,39 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Configure the database
+
+Copy the example settings file:
+
+```bash
+# Windows (PowerShell)
+Copy-Item .env.example .env
+# macOS / Linux
+cp .env.example .env
+```
+
+`DATABASE_URL` in `.env` chooses the database:
+
+```env
+# SQLite: no setup needed
+DATABASE_URL=sqlite:///./stockpilot.db
+
+# PostgreSQL: create an empty "stockpilot" database first
+DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/stockpilot
+```
+
+If there is no `.env`, the app falls back to SQLite. `.env` is git-ignored, so never commit real credentials.
+
+### Create the tables
+
+The schema is managed by Alembic migrations:
+
+```bash
+alembic upgrade head
+```
+
+Run this again whenever you pull new migrations.
+
 ### Run the API
 
 ```bash
@@ -82,8 +122,6 @@ Then open:
 
 - Interactive API docs (Swagger UI): http://127.0.0.1:8000/docs
 - Alternative docs (ReDoc): http://127.0.0.1:8000/redoc
-
-The SQLite database file (`stockpilot.db`) is created automatically on first run.
 
 ## API endpoints
 
@@ -166,12 +204,22 @@ From `stockpilot/backend` with the virtual environment active:
 pytest -v
 ```
 
-The tests replace the `get_db` dependency with an in-memory SQLite database that is reset before every test, so they never touch `stockpilot.db` and don't depend on each other.
+The tests replace the `get_db` dependency with an in-memory SQLite database that is reset before every test, so they never touch your development database and don't depend on each other. PostgreSQL doesn't need to be running for the tests.
+
+## Changing the schema
+
+After editing `app/models.py`:
+
+```bash
+alembic revision --autogenerate -m "describe the change"
+# Review the generated file in alembic/versions/ before applying it
+alembic upgrade head
+```
 
 ## Roadmap
 
-- [ ] GitHub Actions CI to run the tests on every push
-- [ ] Environment-based configuration and Alembic migrations
-- [ ] PostgreSQL support
+- [x] GitHub Actions CI to run the tests on every push
+- [x] Environment-based configuration and Alembic migrations
+- [x] PostgreSQL support
 - [ ] React + TypeScript frontend
 - [ ] Deployment

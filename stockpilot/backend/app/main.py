@@ -1,12 +1,7 @@
 from fastapi import FastAPI
 
-from app.database import engine
-from app.models import Base
 from app.routers import products, stock_movements, dashboard
 
-
-# Create database tables if they don't exist yet
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="StockPilot Inventory API",
