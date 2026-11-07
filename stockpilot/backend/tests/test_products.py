@@ -174,7 +174,7 @@ def test_update_product(client, create_product):
     assert data["quantity"] == 25
 
 
-def test_update_ignores_quantity_field(client, create_product):
+def test_update_rejects_quantity_field(client, create_product):
     product = create_product(quantity=25)
 
     # Stock changes must go through /stock-movements, not PUT
@@ -188,8 +188,8 @@ def test_update_ignores_quantity_field(client, create_product):
         }
     )
 
-    assert response.status_code == 200
-    assert response.json()["quantity"] == 25
+    assert response.status_code == 422
+    assert client.get(f"/products/{product['id']}").json()["quantity"] == 25
 
 
 def test_update_can_keep_same_sku(client, create_product):

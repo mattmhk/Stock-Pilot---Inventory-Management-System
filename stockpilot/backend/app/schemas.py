@@ -17,6 +17,9 @@ class ProductUpdate(BaseModel):
     name: str = Field(min_length=1)
     reorder_level: int = Field(ge=0)
 
+    # Reject unknown fields (e.g. "quantity") instead of silently ignoring them
+    model_config = ConfigDict(extra="forbid")
+
 class ProductResponse(BaseModel):
     id: int
     sku: str
