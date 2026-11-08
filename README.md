@@ -258,6 +258,17 @@ npm run build
 
 The tests replace the `get_db` dependency with an in-memory SQLite database that is reset before every test, so they never touch your development database and don't depend on each other. PostgreSQL doesn't need to be running for the tests.
 
+## Demo data
+
+To fill a database with 16 sample products and about two months of stock movements (deliveries, orders, a few damaged items), run from `stockpilot/backend`:
+
+```bash
+python -m scripts.seed_demo_data            # writes to the database in DATABASE_URL
+python -m scripts.seed_demo_data --dry-run  # preview without writing
+```
+
+Every product's quantity matches its movement history. Products whose SKU already exists are skipped, so it's safe to run more than once.
+
 ## Changing the schema
 
 After editing `app/models.py`:
